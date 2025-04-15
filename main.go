@@ -1,12 +1,17 @@
 package main
 
 import (
-    // "os"
     "fmt"
     "math"
     "time"
     "math/rand"
     "errors"
+
+    pixel "github.com/faiface/pixel"
+	"github.com/faiface/pixel/pixelgl"
+    "github.com/faiface/pixel/imdraw"
+	"golang.org/x/image/colornames"
+
 )
 
 
@@ -52,12 +57,8 @@ const EventMap_LEFT     = 3
 // Const values for Grid
 const GRID_SYMBOL_WHITE = '█' // "\u2592"
 const GRID_SYMBOL_BLACK = '▒' // "\u2593"
-const GRID_SYMBOL_UNKNOWN = '?'
-const GRID_VALUE_PROMISE = 2
-const GRID_VALUE_POINT = 1
-const GRID_VALUE_EMPTY = 0
 
-
+var GUI_CELL_SIZE = Vec2 {5, 3};
 
 type Vec2 struct {
     x, y int
@@ -214,6 +215,16 @@ func (m Matrix)Print() {
 }
 
 
+// GRAPHICS DISPLAY
+func DrawRect(imd *imdraw.IMDraw, rec pixel.Rect) {
+    imd.Push(pixel.V(rec.Min.X, rec.Min.Y))
+    imd.Push(pixel.V(rec.Max.X, rec.Min.Y))
+    imd.Push(pixel.V(rec.Max.X, rec.Max.Y))
+    imd.Push(pixel.V(rec.Min.X, rec.Max.Y))
+    imd.Polygon(0)
+}
+
+
 /// THE ALGORYTHM PART
 func UpdateEventSpeed(ctx Context, m Matrix, p Vec2, eventSpeed []int) {
     // Check boundary conditions
@@ -304,9 +315,8 @@ func (ctx *Context)IterationAdvance(m Matrix) {
 }
 
 
-func main() {
-    rand.Seed(time.Now().UTC().UnixNano())
-
+// Run simulation, with terminal based visualisation
+func runTerm() {
     m, _ := NewMatrix(Vec2{20, 20})
     ctx := NewContext()
 
@@ -327,4 +337,55 @@ func main() {
         fmt.Print("\n\n\n\n\n\n\n\n\n")
         time.Sleep(time.Second / 60)
     }
+}
+
+
+// Run simulation, with video graphics
+func runGUI() {
+    // Initial conditions
+    ctx := NewContext()
+    m, _ := NewMatrix(Vec2{20, 20})
+    ctx.AddPoint(5, 5)
+    ctx.AddPoint(5, 15)
+    ctx.AddPoint(15, 5)
+    ctx.AddPoint(15, 15)
+
+    cfg := pixelgl.WindowConfig{
+        Title:  "Platformer",
+        Bounds: pixel.R(0, 0, 1024, 768),
+        VSync:  true,
+    }
+    win, err := pixelgl.NewWindow(cfg)
+    if err != nil {
+        panic(err)
+    }
+
+    win.Clear(colornames.Black)
+
+    for !win.Closed() {
+        ctx.IterationAdvance(m)
+
+        win.Clear(colornames.Black)
+        imd := imdraw.New(nil)
+        imd.Precision = 32
+        imd.Color = colornames.Antiquewhite
+        for _, p := range ctx.Points {
+            rec := pixel.R(
+                float64(p.x * GUI_CELL_SIZE.x),
+                float64(p.y * GUI_CELL_SIZE.y),
+                float64((p.x + 1) * GUI_CELL_SIZE.x),
+                float64((p.y + 1) * GUI_CELL_SIZE.y),
+            )
+            DrawRect(imd, rec)
+        }
+        imd.Draw(win)
+		win.Update()
+	}
+}
+
+
+func main() {
+    rand.Seed(time.Now().UTC().UnixNano())
+    // runTerm()
+	pixelgl.Run(runGUI)
 }
