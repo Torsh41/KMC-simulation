@@ -23,33 +23,33 @@ var EventSpeedDefault = []int{
 
 var EventCallbackMap = []EventCallback {
     // Moving
-    func (g *Grid, c *Coordinate) func() {
-        return EventMove(g, c, Coordinate{0, -1})
+    func (g *Grid, c *Vec2) func() {
+        return EventMove(g, c, Vec2{0, -1})
     },
-    func (g *Grid, c *Coordinate) func() {
-        return EventMove(g, c, Coordinate{1, 0})
+    func (g *Grid, c *Vec2) func() {
+        return EventMove(g, c, Vec2{1, 0})
     },
-    func (g *Grid, c *Coordinate) func() {
-        return EventMove(g, c, Coordinate{0, 1})
+    func (g *Grid, c *Vec2) func() {
+        return EventMove(g, c, Vec2{0, 1})
     },
-    func (g *Grid, c *Coordinate) func() {
-        return EventMove(g, c, Coordinate{-1, 0})
+    func (g *Grid, c *Vec2) func() {
+        return EventMove(g, c, Vec2{-1, 0})
     },
     // Cloning
-    func (g *Grid, c *Coordinate) func() {
-        return EventClone(g, *c, Coordinate{0, -1})
+    func (g *Grid, c *Vec2) func() {
+        return EventClone(g, *c, Vec2{0, -1})
     },
-    func (g *Grid, c *Coordinate) func() {
-        return EventClone(g, *c, Coordinate{1, 0})
+    func (g *Grid, c *Vec2) func() {
+        return EventClone(g, *c, Vec2{1, 0})
     },
-    func (g *Grid, c *Coordinate) func() {
-        return EventClone(g, *c, Coordinate{0, 1})
+    func (g *Grid, c *Vec2) func() {
+        return EventClone(g, *c, Vec2{0, 1})
     },
-    func (g *Grid, c *Coordinate) func() {
-        return EventClone(g, *c, Coordinate{-1, 0})
+    func (g *Grid, c *Vec2) func() {
+        return EventClone(g, *c, Vec2{-1, 0})
     },
     // Diying
-    func (g *Grid, c *Coordinate) func() {
+    func (g *Grid, c *Vec2) func() {
         return func() { EventDie(g, *c) }
     },
 }
@@ -74,13 +74,13 @@ const GRID_VALUE_EMPTY = 0
 
 
 
-type Coordinate struct {
+type Vec2 struct {
     x, y int
 }
 
 type Grid struct {
-    Size Coordinate
-    Points []Coordinate
+    Size Vec2
+    Points []Vec2
     _data []int
     Time float64
 }
@@ -96,7 +96,7 @@ type Grid struct {
 /// CONVENIENCE METHODS
 
 
-func NewGrid(size Coordinate) (g Grid, err error) {
+func NewGrid(size Vec2) (g Grid, err error) {
     if size.x <= 0 || size.y <= 0 {
         return g, errors.New("Invalid size")
     }
@@ -104,7 +104,7 @@ func NewGrid(size Coordinate) (g Grid, err error) {
     g.Time = 0.0
     g.Size = size
     g._data = make([]int, size.x * size.y)
-    g.Points = make([]Coordinate, 0)
+    g.Points = make([]Vec2, 0)
     return g, nil
 }
 
@@ -134,13 +134,13 @@ func (g *Grid)AddPoint(i, j int) (err error) {
         return errors.New("Invalid index")
     }
 
-    g.Points = append(g.Points, Coordinate{i, j})
+    g.Points = append(g.Points, Vec2{i, j})
     g.Set(i, j, GRID_VALUE_POINT)
     return nil
 }
 
 
-func (g *Grid)RemovePoint(p Coordinate) (err error) {
+func (g *Grid)RemovePoint(p Vec2) (err error) {
     for i, v := range g.Points {
         if v.x == p.x && v.y == p.y {
             g.Points = append(g.Points[:i], g.Points[i+1:]...)
@@ -153,7 +153,7 @@ func (g *Grid)RemovePoint(p Coordinate) (err error) {
 }
 
 
-func (g *Grid)MovePoint(src Coordinate, dst Coordinate) (err error) {
+func (g *Grid)MovePoint(src Vec2, dst Vec2) (err error) {
     if (dst.x < 0 || dst.x >= g.Size.x ||
         dst.y < 0 || dst.y >= g.Size.y){
         return errors.New("Error moving point: invalid dst coordinate")
@@ -172,7 +172,7 @@ func (g *Grid)MovePoint(src Coordinate, dst Coordinate) (err error) {
 }
 
 
-func (g Grid)FindPointIdx(p Coordinate) (ret int, err error) {
+func (g Grid)FindPointIdx(p Vec2) (ret int, err error) {
     for idx, v := range g.Points {
         if v.x == p.x && v.y == p.y {
             return idx, nil
@@ -216,7 +216,7 @@ func (g Grid)PrintColor() {
 /// THE ALGORYTHM PART
 
 
-func UpdateEventSpeed(g Grid, p Coordinate, eventSpeed []int) {
+func UpdateEventSpeed(g Grid, p Vec2, eventSpeed []int) {
     // Check boundary conditions
     if p.y == 0 {
         eventSpeed[EventMap_MOVE + EventMap_UP] = 0
@@ -288,8 +288,8 @@ func (g *Grid)IterationAdvance() {
     g.Time += dt
 
     // Select cell
-    cell_coord := Coordinate{rand.Intn(g.Size.x), rand.Intn(g.Size.y)}
-    // cell_coord := Coordinate{15, 15}
+    cell_coord := Vec2{rand.Intn(g.Size.x), rand.Intn(g.Size.y)}
+    // cell_coord := Vec2{15, 15}
     cell_val, _ := g.Get(cell_coord.x, cell_coord.y)
     if cell_val == GRID_VALUE_EMPTY {
         return
@@ -359,7 +359,7 @@ func (g Grid)FindIdenticalPoints() {
 
 func main() {
     rand.Seed(time.Now().UTC().UnixNano())
-    g, _ := NewGrid(Coordinate{20, 20})
+    g, _ := NewGrid(Vec2{20, 20})
 
     // Initial conditions
     g.AddPoint(5, 5)
