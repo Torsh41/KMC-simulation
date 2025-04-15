@@ -5,21 +5,21 @@ import (
 )
 
 
-type EventCallback func (g *Grid, c *Coordinate) func()
+type EventCallback func (ctx *Context, c *Vec2) func()
 
 
 
-func EventMove(g *Grid, c *Coordinate, d Coordinate) func() {
+func EventMove(ctx *Context, c *Vec2, d Vec2) func() {
     src := *c
-    dst := Coordinate{src.x + d.x, src.y + d.y}
+    dst := Vec2{src.x + d.x, src.y + d.y}
     // (*c).x += d.x
     // (*c).y += d.y
-    // (*g).Set(dst.x, dst.y, GRID_VALUE_PROMISE)
+    // (*ctx).Set(dst.x, dst.y, GRID_VALUE_PROMISE)
     return func() {
         // log.Print("Removing a point: ", future)
-        // (*g).Set(future.x, future.y, GRID_VALUE_EMPTY)
-        // (*g).Set(future.x + d.x, future.y + d.y, GRID_VALUE_POINT)
-        err := g.MovePoint(src, dst)
+        // (*ctx).Set(future.x, future.y, GRID_VALUE_EMPTY)
+        // (*ctx).Set(future.x + d.x, future.y + d.y, GRID_VALUE_POINT)
+        err := ctx.MovePoint(src, dst)
         if err != nil {
             log.Println(src, err)
         }
@@ -27,21 +27,18 @@ func EventMove(g *Grid, c *Coordinate, d Coordinate) func() {
 }
 
 
-func EventClone(g *Grid, c Coordinate, d Coordinate) func() {
-    dst := Coordinate{c.x + d.x, c.y + d.y}
-    // (*g).Set(dst.x, dst.y, GRID_VALUE_PROMISE)
+func EventClone(ctx *Context, c Vec2, d Vec2) func() {
+    dst := Vec2{c.x + d.x, c.y + d.y}
+    // (*ctx).Set(dst.x, dst.y, GRID_VALUE_PROMISE)
     return func() {
-        (*g).Set(dst.x, dst.y, GRID_VALUE_POINT)
-        err := (*g).AddPoint(dst.x, dst.y)
-        if err != nil {
-            log.Println(err)
-        }
+        // (*ctx).Set(dst.x, dst.y, GRID_VALUE_POINT)
+        (*ctx).AddPoint(dst.x, dst.y)
     }
 }
 
 
-func EventDie(g *Grid, c Coordinate) {
-    g.RemovePoint(c)
+func EventDie(ctx *Context, c Vec2) {
+    ctx.RemovePoint(c)
 }
 
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+    // "os"
     "fmt"
     "math"
     "time"
@@ -23,34 +24,34 @@ var EventSpeedDefault = []int{
 
 var EventCallbackMap = []EventCallback {
     // Moving
-    func (g *Grid, c *Vec2) func() {
-        return EventMove(g, c, Vec2{0, -1})
+    func (ctx *Context, c *Vec2) func() {
+        return EventMove(ctx, c, Vec2{0, -1})
     },
-    func (g *Grid, c *Vec2) func() {
-        return EventMove(g, c, Vec2{1, 0})
+    func (ctx *Context, c *Vec2) func() {
+        return EventMove(ctx, c, Vec2{1, 0})
     },
-    func (g *Grid, c *Vec2) func() {
-        return EventMove(g, c, Vec2{0, 1})
+    func (ctx *Context, c *Vec2) func() {
+        return EventMove(ctx, c, Vec2{0, 1})
     },
-    func (g *Grid, c *Vec2) func() {
-        return EventMove(g, c, Vec2{-1, 0})
+    func (ctx *Context, c *Vec2) func() {
+        return EventMove(ctx, c, Vec2{-1, 0})
     },
     // Cloning
-    func (g *Grid, c *Vec2) func() {
-        return EventClone(g, *c, Vec2{0, -1})
+    func (ctx *Context, c *Vec2) func() {
+        return EventClone(ctx, *c, Vec2{0, -1})
     },
-    func (g *Grid, c *Vec2) func() {
-        return EventClone(g, *c, Vec2{1, 0})
+    func (ctx *Context, c *Vec2) func() {
+        return EventClone(ctx, *c, Vec2{1, 0})
     },
-    func (g *Grid, c *Vec2) func() {
-        return EventClone(g, *c, Vec2{0, 1})
+    func (ctx *Context, c *Vec2) func() {
+        return EventClone(ctx, *c, Vec2{0, 1})
     },
-    func (g *Grid, c *Vec2) func() {
-        return EventClone(g, *c, Vec2{-1, 0})
+    func (ctx *Context, c *Vec2) func() {
+        return EventClone(ctx, *c, Vec2{-1, 0})
     },
     // Diying
-    func (g *Grid, c *Vec2) func() {
-        return func() { EventDie(g, *c) }
+    func (ctx *Context, c *Vec2) func() {
+        return func() { EventDie(ctx, *c) }
     },
 }
 
@@ -65,9 +66,9 @@ const EventMap_DOWN     = 2
 const EventMap_LEFT     = 3
 
 // Const values for Grid
-const GRID_SYMBOL_WHITE = "█" // "\u2592"
-const GRID_SYMBOL_BLACK = "▒" // "\u2593"
-const GRID_SYMBOL_UNKNOWN = "?"
+const GRID_SYMBOL_WHITE = '█' // "\u2592"
+const GRID_SYMBOL_BLACK = '▒' // "\u2593"
+const GRID_SYMBOL_UNKNOWN = '?'
 const GRID_VALUE_PROMISE = 2
 const GRID_VALUE_POINT = 1
 const GRID_VALUE_EMPTY = 0
@@ -78,13 +79,15 @@ type Vec2 struct {
     x, y int
 }
 
-type Grid struct {
+type Matrix struct {
     Size Vec2
-    Points []Vec2
-    _data []int
-    Time float64
+    _data []rune
 }
 
+type Context struct {
+    Points []Vec2
+    Time float64
+}
 
 /// EVENT METHODS
 
@@ -95,56 +98,61 @@ type Grid struct {
 
 /// CONVENIENCE METHODS
 
-
-func NewGrid(size Vec2) (g Grid, err error) {
-    if size.x <= 0 || size.y <= 0 {
-        return g, errors.New("Invalid size")
+func Abs(val int) int {
+    if val < 0 {
+        val *= -1
     }
-
-    g.Time = 0.0
-    g.Size = size
-    g._data = make([]int, size.x * size.y)
-    g.Points = make([]Vec2, 0)
-    return g, nil
+    return val
 }
 
 
-func (g Grid)Get(i, j int) (ret int, err error) {
-    if (i < 0 || i >= g.Size.x || j < 0 || j >= g.Size.y) {
+func NewMatrix(size Vec2) (m Matrix, err error) {
+    if size.x <= 0 || size.y <= 0 {
+        return m, errors.New("Invalid size")
+    }
+
+    m.Size = size
+    m._data = make([]rune, size.x * size.y)
+    return m, nil
+}
+
+
+func NewContext() (ctx Context) {
+    ctx.Time = 0.0
+    ctx.Points = make([]Vec2, 0)
+    return ctx
+}
+
+
+func (m Matrix)Get(i, j int) (ret rune, err error) {
+    if (i < 0 || i >= m.Size.x || j < 0 || j >= m.Size.y) {
         return 0, errors.New("Invalid index")
     }
 
-    ret = g._data[g.Size.x * j + i]
+    ret = m._data[m.Size.x * j + i]
     return ret, nil
 }
 
 
-func (g *Grid)Set(i, j int, val int) (err error) {
-    if (i < 0 || i >= g.Size.x || j < 0 || j >= g.Size.y) {
+func (m *Matrix)Set(i, j int, val rune) (err error) {
+    if (i < 0 || i >= m.Size.x || j < 0 || j >= m.Size.y) {
         return errors.New("Invalid index")
     }
 
-    g._data[g.Size.x * j + i] = val
+    m._data[m.Size.x * j + i] = val
     return nil
 }
 
 
-func (g *Grid)AddPoint(i, j int) (err error) {
-    if (i < 0 || i >= g.Size.x || j < 0 || j >= g.Size.y) {
-        return errors.New("Invalid index")
-    }
-
-    g.Points = append(g.Points, Vec2{i, j})
-    g.Set(i, j, GRID_VALUE_POINT)
-    return nil
+func (ctx *Context)AddPoint(i, j int) {
+    ctx.Points = append(ctx.Points, Vec2{i, j})
 }
 
 
-func (g *Grid)RemovePoint(p Vec2) (err error) {
-    for i, v := range g.Points {
+func (ctx *Context)RemovePoint(p Vec2) (err error) {
+    for i, v := range ctx.Points {
         if v.x == p.x && v.y == p.y {
-            g.Points = append(g.Points[:i], g.Points[i+1:]...)
-            g.Set(v.x, v.y, GRID_VALUE_EMPTY)
+            ctx.Points = append(ctx.Points[:i], ctx.Points[i+1:]...)
             return nil
         }
     }
@@ -153,17 +161,10 @@ func (g *Grid)RemovePoint(p Vec2) (err error) {
 }
 
 
-func (g *Grid)MovePoint(src Vec2, dst Vec2) (err error) {
-    if (dst.x < 0 || dst.x >= g.Size.x ||
-        dst.y < 0 || dst.y >= g.Size.y){
-        return errors.New("Error moving point: invalid dst coordinate")
-    }
-
-    for i, v := range g.Points {
+func (ctx *Context)MovePoint(src, dst Vec2) (err error) {
+    for i, v := range ctx.Points {
         if v.x == src.x && v.y == src.y {
-            g.Set(src.x, src.y, GRID_VALUE_EMPTY)
-            g.Set(dst.x, dst.y, GRID_VALUE_POINT)
-            g.Points[i] = dst
+            ctx.Points[i] = dst
             return nil
         }
     }
@@ -172,8 +173,8 @@ func (g *Grid)MovePoint(src Vec2, dst Vec2) (err error) {
 }
 
 
-func (g Grid)FindPointIdx(p Vec2) (ret int, err error) {
-    for idx, v := range g.Points {
+func (ctx Context)FindPointIdx(p Vec2) (ret int, err error) {
+    for idx, v := range ctx.Points {
         if v.x == p.x && v.y == p.y {
             return idx, nil
         }
@@ -182,85 +183,89 @@ func (g Grid)FindPointIdx(p Vec2) (ret int, err error) {
 }
 
 
+func (ctx Context)CountAdjacentPoints(p Vec2) (count int, directions [4]bool) {
+    count = 0
+    for _, v := range ctx.Points {
+        if Abs(v.x - p.x) + Abs(v.y - p.y) == 1 {
+            count += 1
+            directions[EventMap_UP] = directions[EventMap_UP] || (p.y + 1 == v.y)
+            directions[EventMap_DOWN] = directions[EventMap_DOWN] || (p.y - 1 == v.y)
+            directions[EventMap_RIGHT] = directions[EventMap_RIGHT] || (p.x + 1 == v.x)
+            directions[EventMap_LEFT] = directions[EventMap_LEFT] || (p.x - 1 == v.x)
+        }
+    }
+    return count, directions
+}
+
+
 /// PRINTING METHODS
 
 
-func (g Grid)Print() {
-    for j := 0; j < g.Size.y; j++ {
-        for i := 0; i < g.Size.x; i++ {
-            fmt.Print(g._data[g.Size.x * j + i], " ")
-        }
-        fmt.Println()
+func (m *Matrix)Clear() {
+    for i := 0; i < len(m._data); i++ {
+        m._data[i] = GRID_SYMBOL_BLACK
     }
 }
 
 
-func (g Grid)PrintColor() {
-    for j := 0; j < g.Size.y; j++ {
-        for i := 0; i < g.Size.x; i++ {
-            var s string
-            if g._data[g.Size.x * j + i] == GRID_VALUE_POINT {
-                s = GRID_SYMBOL_WHITE
-            } else if g._data[g.Size.x * j + i] == GRID_VALUE_EMPTY {
-                s = GRID_SYMBOL_BLACK
-            } else if g._data[g.Size.x * j + i] == GRID_VALUE_PROMISE {
-                s = GRID_SYMBOL_UNKNOWN
-            }
-            fmt.Print(s)
-        }
-        fmt.Println()
+func (m *Matrix)DrawPoint(p Vec2) {
+    m.Set(p.x, p.y, GRID_SYMBOL_WHITE)
+}
+
+
+func (m Matrix)Print() {
+    for j := 0; j < m.Size.y; j++ {
+        s := string(m._data[m.Size.x * j:m.Size.x * (j + 1)])
+        fmt.Println(s)
     }
 }
+
+
+// func (m Matrix)PrintColor() {
+//     for j := 0; j < m.Size.y; j++ {
+//         for i := 0; i < m.Size.x; i++ {
+//             var s string
+//             if m._data[m.Size.x * j + i] == GRID_VALUE_POINT {
+//                 s = GRID_SYMBOL_WHITE
+//             } else if m._data[m.Size.x * j + i] == GRID_VALUE_EMPTY {
+//                 s = GRID_SYMBOL_BLACK
+//             } else if m._data[m.Size.x * j + i] == GRID_VALUE_PROMISE {
+//                 s = GRID_SYMBOL_UNKNOWN
+//             }
+//             fmt.Print(s)
+//         }
+//         fmt.Println()
+//     }
+// }
 
 
 /// THE ALGORYTHM PART
 
 
-func UpdateEventSpeed(g Grid, p Vec2, eventSpeed []int) {
+func UpdateEventSpeed(ctx Context, m Matrix, p Vec2, eventSpeed []int) {
     // Check boundary conditions
     if p.y == 0 {
         eventSpeed[EventMap_MOVE + EventMap_UP] = 0
         eventSpeed[EventMap_CLONE + EventMap_UP] = 0
-    } else if p.y == g.Size.y - 1 {
+    } else if p.y == m.Size.y - 1 {
         eventSpeed[EventMap_MOVE + EventMap_DOWN] = 0
         eventSpeed[EventMap_CLONE + EventMap_DOWN] = 0
     }
     if p.x == 0 {
         eventSpeed[EventMap_MOVE + EventMap_LEFT] = 0
         eventSpeed[EventMap_CLONE + EventMap_LEFT] = 0
-    } else if p.x == g.Size.x - 1 {
+    } else if p.x == m.Size.x - 1 {
         eventSpeed[EventMap_MOVE + EventMap_RIGHT] = 0
         eventSpeed[EventMap_CLONE + EventMap_RIGHT] = 0
     }
 
     // Check adjacent points
-    var v int
-    var err error
-    adjacentCount := 0
-    checkAdjacent := func(v int, direction int) (ret int) {
-        if v == GRID_VALUE_POINT /* || v == GRID_VALUE_PROMISE */ {
+    adjacentCount, directions := ctx.CountAdjacentPoints(p)
+    for direction, cond := range directions {
+        if cond == true {
             eventSpeed[EventMap_MOVE + direction] = 0
             eventSpeed[EventMap_CLONE + direction] = 0
-            return 1
         }
-        return 0
-    }
-
-    v, err = g.Get(p.x, p.y - 1)
-    if err == nil {
-        adjacentCount += checkAdjacent(v, EventMap_UP)
-    }
-    v, err = g.Get(p.x, p.y + 1)
-    if err == nil {
-        adjacentCount += checkAdjacent(v, EventMap_DOWN)
-    }
-    v, err = g.Get(p.x - 1, p.y)
-    if err == nil {
-        adjacentCount += checkAdjacent(v, EventMap_LEFT)
-    }
-    v, err = g.Get(p.x + 1, p.y)
-    if err == nil {
-        adjacentCount += checkAdjacent(v, EventMap_RIGHT)
     }
 
     // Special case, unable to clone
@@ -278,29 +283,25 @@ func UpdateEventSpeed(g Grid, p Vec2, eventSpeed []int) {
 }
 
 
-func (g *Grid)IterationAdvance() {
+func (ctx *Context)IterationAdvance(m Matrix) {
     // Select dt
     K := 0
     for _, Ki := range EventSpeedDefault {
         K += Ki
     }
-    dt := - math.Log(rand.Float64()) / float64(K * g.Size.x * g.Size.y)
-    g.Time += dt
+    dt := - math.Log(rand.Float64()) / float64(K * m.Size.x * m.Size.y)
+    ctx.Time += dt
 
     // Select cell
-    cell_coord := Vec2{rand.Intn(g.Size.x), rand.Intn(g.Size.y)}
-    // cell_coord := Vec2{15, 15}
-    cell_val, _ := g.Get(cell_coord.x, cell_coord.y)
-    if cell_val == GRID_VALUE_EMPTY {
-        return
-    }
-    cell_idx, _ := g.FindPointIdx(cell_coord)
+    // cell_coord := Vec2{rand.Intn(m.Size.x), rand.Intn(m.Size.y)}
+    // cell_idx, err := ctx.FindPointIdx(cell_coord)
+    cell_idx := rand.Intn(len(ctx.Points))
+    // cell_coord := ctx.Points[cell_idx]
 
     // Filter speed for impossible events
     eventSpeed := make([]int, len(EventSpeedDefault))
     copy(eventSpeed, EventSpeedDefault)
-    UpdateEventSpeed(*g, g.Points[cell_idx], eventSpeed)
-
+    UpdateEventSpeed(*ctx, m, ctx.Points[cell_idx], eventSpeed)
 
     // Select the event
     K = 0
@@ -333,24 +334,17 @@ func (g *Grid)IterationAdvance() {
         return;
     }
 
-    // fmt.Println(g.Time, len(g.Points))
-
-    // fmt.Println("r: ", r)
-    // fmt.Println("cell_coord: ", cell_coord)
-    // fmt.Println("cell: ", g.Points[cell_idx])
-    // fmt.Println(g.Points)
-
     // Call the event
-    callback := EventCallbackMap[idxSel](g, &g.Points[cell_idx])
+    callback := EventCallbackMap[idxSel](ctx, &ctx.Points[cell_idx])
     callback()
 }
 
 
-func (g Grid)FindIdenticalPoints() {
-    for i := 0; i < len(g.Points); i++ {
-        for j := i + 1; j < len(g.Points); j++ {
-            if g.Points[i].x == g.Points[j].x && g.Points[i].y == g.Points[j].y {
-                fmt.Println("Found a bad clone: ", g.Points[i])
+func (ctx Context)FindIdenticalPoints() {
+    for i := 0; i < len(ctx.Points); i++ {
+        for j := i + 1; j < len(ctx.Points); j++ {
+            if ctx.Points[i].x == ctx.Points[j].x && ctx.Points[i].y == ctx.Points[j].y {
+                fmt.Println("Found a bad clone: ", ctx.Points[i])
             }
         }
     }
@@ -359,29 +353,33 @@ func (g Grid)FindIdenticalPoints() {
 
 func main() {
     rand.Seed(time.Now().UTC().UnixNano())
-    g, _ := NewGrid(Vec2{20, 20})
+    m, _ := NewMatrix(Vec2{20, 20})
+    ctx := NewContext()
 
     // Initial conditions
-    g.AddPoint(5, 5)
-    g.AddPoint(5, 15)
-    g.AddPoint(15, 5)
-    g.AddPoint(15, 15)
-    // g.AddPoint(15, 14)
-    // g.AddPoint(15, 16)
-    // g.AddPoint(14, 15)
+    ctx.AddPoint(5, 5)
+    ctx.AddPoint(5, 15)
+    ctx.AddPoint(15, 5)
+    ctx.AddPoint(15, 15)
+    // ctx.AddPoint(15, 14)
+    // ctx.AddPoint(15, 16)
+    // ctx.AddPoint(14, 15)
 
-    for g.Time < 100.0 {
-        g.IterationAdvance()
+    for ctx.Time < 100.0 {
+        ctx.IterationAdvance(m)
         // / View evolution in real time
-        // fmt.Print(g.Time, g.Points)
-        g.PrintColor()
+        // fmt.Print(ctx.Time, ctx.Points)
+        m.Clear()
+        for _, p := range ctx.Points {
+            m.DrawPoint(p)
+        }
+        m.Print()
         fmt.Print("\n\n\n\n\n\n\n\n\n")
-        // time.Sleep(time.Second / 60)
+        time.Sleep(time.Second / 60)
     }
 
     /// Sanity Validation
-    // g.FindIdenticalPoints()
-    // fmt.Println(len(g.Points))
-    // fmt.Println(g.Points)
-    g.PrintColor()
+    // ctx.FindIdenticalPoints()
+    // fmt.Println(len(ctx.Points))
+    fmt.Println(ctx.Points)
 }
