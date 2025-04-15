@@ -22,37 +22,20 @@ var EventSpeedDefault = []int{
     2,
 }
 
+type EventCallback func (ctx *Context, c *Vec2)
 var EventCallbackMap = []EventCallback {
     // Moving
-    func (ctx *Context, c *Vec2) func() {
-        return EventMove(ctx, c, Vec2{0, -1})
-    },
-    func (ctx *Context, c *Vec2) func() {
-        return EventMove(ctx, c, Vec2{1, 0})
-    },
-    func (ctx *Context, c *Vec2) func() {
-        return EventMove(ctx, c, Vec2{0, 1})
-    },
-    func (ctx *Context, c *Vec2) func() {
-        return EventMove(ctx, c, Vec2{-1, 0})
-    },
+    func (ctx *Context, c *Vec2) { EventCallbackMove(ctx, c, Vec2{0, -1}) },
+    func (ctx *Context, c *Vec2) { EventCallbackMove(ctx, c, Vec2{1, 0}) },
+    func (ctx *Context, c *Vec2) { EventCallbackMove(ctx, c, Vec2{0, 1}) },
+    func (ctx *Context, c *Vec2) { EventCallbackMove(ctx, c, Vec2{-1, 0}) },
     // Cloning
-    func (ctx *Context, c *Vec2) func() {
-        return EventClone(ctx, *c, Vec2{0, -1})
-    },
-    func (ctx *Context, c *Vec2) func() {
-        return EventClone(ctx, *c, Vec2{1, 0})
-    },
-    func (ctx *Context, c *Vec2) func() {
-        return EventClone(ctx, *c, Vec2{0, 1})
-    },
-    func (ctx *Context, c *Vec2) func() {
-        return EventClone(ctx, *c, Vec2{-1, 0})
-    },
+    func (ctx *Context, c *Vec2) { EventCallbackClone(ctx, *c, Vec2{0, -1}) },
+    func (ctx *Context, c *Vec2) { EventCallbackClone(ctx, *c, Vec2{1, 0}) },
+    func (ctx *Context, c *Vec2) { EventCallbackClone(ctx, *c, Vec2{0, 1}) },
+    func (ctx *Context, c *Vec2) { EventCallbackClone(ctx, *c, Vec2{-1, 0}) },
     // Diying
-    func (ctx *Context, c *Vec2) func() {
-        return func() { EventDie(ctx, *c) }
-    },
+    func (ctx *Context, c *Vec2) { EventCallbackDie(ctx, *c) },
 }
 
 // Indices for the events
@@ -90,14 +73,25 @@ type Context struct {
 }
 
 /// EVENT METHODS
+func EventCallbackMove(ctx *Context, c *Vec2, d Vec2) {
+    src := *c
+    dst := Vec2{src.x + d.x, src.y + d.y}
+    ctx.MovePoint(src, dst)
+}
 
 
+func EventCallbackClone(ctx *Context, c Vec2, d Vec2) {
+    dst := Vec2{c.x + d.x, c.y + d.y}
+    (*ctx).AddPoint(dst.x, dst.y)
+}
 
-/// QUEUE METHODS
+
+func EventCallbackDie(ctx *Context, c Vec2) {
+    ctx.RemovePoint(c)
+}
 
 
 /// CONVENIENCE METHODS
-
 func Abs(val int) int {
     if val < 0 {
         val *= -1
@@ -335,8 +329,8 @@ func (ctx *Context)IterationAdvance(m Matrix) {
     }
 
     // Call the event
-    callback := EventCallbackMap[idxSel](ctx, &ctx.Points[cell_idx])
-    callback()
+    callback := EventCallbackMap[idxSel]
+    callback(ctx, &ctx.Points[cell_idx])
 }
 
 
