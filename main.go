@@ -23,6 +23,7 @@ var EventSpeedDefault = []int{
 }
 
 type EventCallback func (ctx *Context, c *Vec2)
+
 var EventCallbackMap = []EventCallback {
     // Moving
     func (ctx *Context, c *Vec2) { EventCallbackMove(ctx, c, Vec2{0, -1}) },
@@ -192,9 +193,7 @@ func (ctx Context)CountAdjacentPoints(p Vec2) (count int, directions [4]bool) {
 }
 
 
-/// PRINTING METHODS
-
-
+/// ASCII DISPLAY METHODS
 func (m *Matrix)Clear() {
     for i := 0; i < len(m._data); i++ {
         m._data[i] = GRID_SYMBOL_BLACK
@@ -215,27 +214,7 @@ func (m Matrix)Print() {
 }
 
 
-// func (m Matrix)PrintColor() {
-//     for j := 0; j < m.Size.y; j++ {
-//         for i := 0; i < m.Size.x; i++ {
-//             var s string
-//             if m._data[m.Size.x * j + i] == GRID_VALUE_POINT {
-//                 s = GRID_SYMBOL_WHITE
-//             } else if m._data[m.Size.x * j + i] == GRID_VALUE_EMPTY {
-//                 s = GRID_SYMBOL_BLACK
-//             } else if m._data[m.Size.x * j + i] == GRID_VALUE_PROMISE {
-//                 s = GRID_SYMBOL_UNKNOWN
-//             }
-//             fmt.Print(s)
-//         }
-//         fmt.Println()
-//     }
-// }
-
-
 /// THE ALGORYTHM PART
-
-
 func UpdateEventSpeed(ctx Context, m Matrix, p Vec2, eventSpeed []int) {
     // Check boundary conditions
     if p.y == 0 {
@@ -278,7 +257,7 @@ func UpdateEventSpeed(ctx Context, m Matrix, p Vec2, eventSpeed []int) {
 
 
 func (ctx *Context)IterationAdvance(m Matrix) {
-    // Select dt
+    // Select dt - interval of time
     K := 0
     for _, Ki := range EventSpeedDefault {
         K += Ki
@@ -286,18 +265,15 @@ func (ctx *Context)IterationAdvance(m Matrix) {
     dt := - math.Log(rand.Float64()) / float64(K * m.Size.x * m.Size.y)
     ctx.Time += dt
 
-    // Select cell
-    // cell_coord := Vec2{rand.Intn(m.Size.x), rand.Intn(m.Size.y)}
-    // cell_idx, err := ctx.FindPointIdx(cell_coord)
+    // Select a living cell
     cell_idx := rand.Intn(len(ctx.Points))
-    // cell_coord := ctx.Points[cell_idx]
 
-    // Filter speed for impossible events
+    // Filter events' speed for impossible events
     eventSpeed := make([]int, len(EventSpeedDefault))
     copy(eventSpeed, EventSpeedDefault)
     UpdateEventSpeed(*ctx, m, ctx.Points[cell_idx], eventSpeed)
 
-    // Select the event
+    // Select a single event
     K = 0
     for _, Ki := range eventSpeed {
         K += Ki
@@ -305,14 +281,8 @@ func (ctx *Context)IterationAdvance(m Matrix) {
     evAccumulate := 0.0
     idxSel := -1
     r := rand.Float64()
-    // fmt.Println(eventSpeed, r)
     for i := 0; i < len(eventSpeed); i++ {
-        // fmt.Println("idx: ", i, "; spd: ", eventSpeed[i])
         dspeed := float64(eventSpeed[i]) / float64(K)
-
-
-
-        // fmt.Println(dspeed, evAccumulate, evAccumulate + dspeed)
         if (evAccumulate <= r && r < evAccumulate + dspeed) {
             // check, if Event is possible at all
             if eventSpeed[i] != 0.0 {
@@ -323,7 +293,7 @@ func (ctx *Context)IterationAdvance(m Matrix) {
         evAccumulate += dspeed
     }
 
-    // Event is impossible
+    // Case: no event was selected
     if idxSel == -1 {
         return;
     }
@@ -334,19 +304,9 @@ func (ctx *Context)IterationAdvance(m Matrix) {
 }
 
 
-func (ctx Context)FindIdenticalPoints() {
-    for i := 0; i < len(ctx.Points); i++ {
-        for j := i + 1; j < len(ctx.Points); j++ {
-            if ctx.Points[i].x == ctx.Points[j].x && ctx.Points[i].y == ctx.Points[j].y {
-                fmt.Println("Found a bad clone: ", ctx.Points[i])
-            }
-        }
-    }
-}
-
-
 func main() {
     rand.Seed(time.Now().UTC().UnixNano())
+
     m, _ := NewMatrix(Vec2{20, 20})
     ctx := NewContext()
 
@@ -355,14 +315,10 @@ func main() {
     ctx.AddPoint(5, 15)
     ctx.AddPoint(15, 5)
     ctx.AddPoint(15, 15)
-    // ctx.AddPoint(15, 14)
-    // ctx.AddPoint(15, 16)
-    // ctx.AddPoint(14, 15)
 
     for ctx.Time < 100.0 {
         ctx.IterationAdvance(m)
-        // / View evolution in real time
-        // fmt.Print(ctx.Time, ctx.Points)
+        // View evolution in real time
         m.Clear()
         for _, p := range ctx.Points {
             m.DrawPoint(p)
@@ -371,9 +327,4 @@ func main() {
         fmt.Print("\n\n\n\n\n\n\n\n\n")
         time.Sleep(time.Second / 60)
     }
-
-    /// Sanity Validation
-    // ctx.FindIdenticalPoints()
-    // fmt.Println(len(ctx.Points))
-    fmt.Println(ctx.Points)
 }
