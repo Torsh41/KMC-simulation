@@ -217,7 +217,7 @@ func (m Matrix)Print() {
 
 // GRAPHICS DISPLAY
 func DrawRect(imd *imdraw.IMDraw, rec pixel.Rect) {
-    imd.Push(pixel.V(rec.Min.X, rec.Min.Y))
+    // imd.Push(pixel.V(rec.Min.X, rec.Min.Y))
     imd.Push(pixel.V(rec.Max.X, rec.Min.Y))
     imd.Push(pixel.V(rec.Max.X, rec.Max.Y))
     imd.Push(pixel.V(rec.Min.X, rec.Max.Y))
@@ -342,9 +342,11 @@ func runTerm() {
 
 // Run simulation, with video graphics
 func runGUI() {
+    // Ticks Per Frame
+    TPF := 128
     // Initial conditions
     ctx := NewContext()
-    m, _ := NewMatrix(Vec2{20, 20})
+    m, _ := NewMatrix(Vec2{200, 200})
     ctx.AddPoint(5, 5)
     ctx.AddPoint(5, 15)
     ctx.AddPoint(15, 5)
@@ -352,7 +354,7 @@ func runGUI() {
 
     cfg := pixelgl.WindowConfig{
         Title:  "Platformer",
-        Bounds: pixel.R(0, 0, 1024, 768),
+        Bounds: pixel.R(0, 0, float64(m.Size.x*GUI_CELL_SIZE.x), float64(m.Size.y*GUI_CELL_SIZE.y)),
         VSync:  true,
     }
     win, err := pixelgl.NewWindow(cfg)
@@ -362,9 +364,18 @@ func runGUI() {
 
     win.Clear(colornames.Black)
 
-    for !win.Closed() {
-        ctx.IterationAdvance(m)
+    var (
+		frames = 0
+		second = time.Tick(time.Second)
+	)
 
+    for !win.Closed() {
+        // Run simulation
+        for i := 0; i < TPF; i++ {
+            ctx.IterationAdvance(m)
+        }
+
+        // Draw
         win.Clear(colornames.Black)
         imd := imdraw.New(nil)
         imd.Precision = 32
@@ -378,8 +389,17 @@ func runGUI() {
             )
             DrawRect(imd, rec)
         }
+
         imd.Draw(win)
 		win.Update()
+        // Calculate FPS
+        frames++
+		select {
+		case <-second:
+			win.SetTitle(fmt.Sprintf("%s | FPS: %d", cfg.Title, frames))
+			frames = 0
+		default:
+        }
 	}
 }
 
