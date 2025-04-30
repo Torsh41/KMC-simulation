@@ -23,7 +23,8 @@ Program is written and tested in `go` version `1.23.0`.
 
 To run the program, navigate to it's directory, then go run the main.go file.
 
-```go run main.go
+```
+go run main.go
 ```
 
 ## License
